@@ -58,15 +58,17 @@ class Game:
 
         self.turns = itertools.cycle(self.players)
 
-    def update(self, player: Player, card_played: Card, colour_change_to: Optional[str] = None) -> None:
+    def update(
+        self, player: Player, card_played: Card, colour_change_to: Optional[str] = None
+    ) -> None:
         next(self.turns)
         self.discard_pile.append(card_played)
         player.hand.remove(card_played)
 
         if not (
-                card_played.colour == self.current_colour
-                or (self.current_number and card_played.number == self.current_number)
-                or set(card_played.effects).intersection(self.current_effects)
+            card_played.colour == self.current_colour
+            or (self.current_number and card_played.number == self.current_number)
+            or set(card_played.effects).intersection(self.current_effects)
         ):
             raise ValueError("Invalid Card")
 
@@ -89,7 +91,7 @@ class Game:
         if "reversed" in card_played.effects:
             index = self.players.index(player)
             self.turns = itertools.cycle(
-                self.players[index - 1:: -1] + self.players[: index - 1: -1]
+                self.players[index - 1 :: -1] + self.players[: index - 1 : -1]
             )
 
         if "colour_change" in card_played.effects:
