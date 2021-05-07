@@ -81,10 +81,12 @@ class Game:
     def update(
         self,
         player: Player,
-        card_played: Card,
+        card_index: int,
         uno_called: bool = False,
         colour_change_to: Optional[str] = None,
     ) -> dict[str, Union[str, Player]]:
+
+        card_played = player.hand[card_index]
         next(self.turns)
         self.discard_pile.append(card_played)
         player.hand.remove(card_played)
@@ -99,6 +101,12 @@ class Game:
         self.current_colour = card_played.colour
         self.current_number = card_played.number
         self.current_effects = card_played.effects
+
+        response = {
+            "current_colour": self.current_colour,
+            "current_number": self.current_number,
+            "current_effects": self.current_effects,
+        }
 
         if "+2" in card_played.effects:
             self.current_plus_amount += 2
@@ -122,9 +130,13 @@ class Game:
             self.current_colour = colour_change_to
 
         if not uno_called and len(player.hand) == 1:
-            return {"status": "uncalled_uno"}
+            for _ in range(7):
+                player.give_card(self.draw_card())
+            return response | {"status": "uncalled_uno"}
 
         if not player.hand:
             self.remove_player(player)
             self.turns = itertools.cycle(self.players)
-            return {"status": "win", "winner": player}
+            return response | {"status": "win", "winner": player}
+
+        return response
