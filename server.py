@@ -70,7 +70,7 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
 
             on_going_games_by_id[id_] = game
             players_by_conn[conn] = player
-            send_message(conn, id_=id_)
+            send_message(conn, category=CREATE_GAME_MESSAGE, id_=id_)
             print(f"[CREATE] {addr} created game {game.id_}", flush=True)
 
         if msg.get("category") == START_GAME_MESSAGE:
@@ -107,18 +107,23 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
             update = game.update(
                 player, msg["card_index"], msg["colour_change_to"], msg["uno_called"]
             )
+            print(update)
+            print(game.current_turn.username)
+            print(game.current_colour, game.current_number, game.current_effects)
+
             if update["status"] == "invalid_card":
                 send_message(conn, category=CARD_PLAYED_MESSAGE, **update)
             else:
                 for player_ in game.players:
-                    if not player == player_:
-                        send_message(
-                            player_.conn,
-                            category=CARD_PLAYED_MESSAGE,
-                            player=player.username,
-                            is_turn=player_ == game.current_turn,
-                            **update,
-                        )
+                    print(player_.username, player_ == game.current_turn)
+                    send_message(
+                        player_.conn,
+                        category=CARD_PLAYED_MESSAGE,
+                        player=player.username,
+                        is_turn=player_ == game.current_turn,
+                        hand=player_.hand_json(),
+                        **update,
+                    )
 
             print(f"[PLAY] {addr} played {msg['card_index']} in {game.id_}", flush=True)
 

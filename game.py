@@ -69,6 +69,9 @@ class Game:
             for _ in range(13):
                 player.give_card(self.draw_card())
 
+        while self.draw_pile[-1].effects:
+            random.shuffle(self.draw_pile)
+
         first_card = self.draw_pile.pop()
         self.discard_pile.append(first_card)
 
@@ -141,4 +144,4 @@ class Game:
             self.turns = itertools.cycle(self.players)
             return response | {"status": "win", "winner": player}
 
-        return response
+        return response | {"status": "ok"}

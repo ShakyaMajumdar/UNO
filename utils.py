@@ -15,7 +15,6 @@ def generate_random_id(preexisting_ids: set[str]) -> str:
 
 
 def send_message(conn: socket.socket, **msg) -> None:
-    print("sending", msg)
     message = json.dumps(msg).encode(FORMAT)
     send_length = str(len(message)).encode(FORMAT)
     send_length += b" " * (HEADER - len(send_length))
@@ -31,5 +30,4 @@ def receive_message(conn: socket.socket) -> dict:
         msg_length = int(msg_length)
         msg = conn.recv(msg_length).decode(FORMAT)
 
-    print("received", msg)
     return json.loads(msg)

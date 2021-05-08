@@ -58,6 +58,8 @@ class Client:
 
         if self.is_host:
             send_message(conn, category=CREATE_GAME_MESSAGE, username=self.username)
+            while not self.game_id:
+                pass
             print(self.game_id)
             input("press any key to start ")
             send_message(conn, category=START_GAME_MESSAGE)
@@ -73,23 +75,24 @@ class Client:
         while self.game_in_progress:
             if not self.is_turn:
                 continue
+            print(self.current_colour, self.current_number, self.current_effects)
             print(self.hand)
 
-            a = input("can play? (y/n)")
+            a = input("can play? (y/n) ")
             if a == "y":
-                i = int(input("enter index"))
+                i = int(input("enter index "))
                 c = None
                 if "colour_change" in self.hand[i]["effects"]:
-                    c = input("change to?")
+                    c = input("change to? ")
 
-                username = input("call uno")
+                uno = input("call uno ")
 
                 send_message(
                     conn,
                     category=CARD_PLAYED_MESSAGE,
                     card_index=i,
                     colour_change_to=c,
-                    uno_called=username == "y",
+                    uno_called=uno == "y",
                 )
 
             if a == "n":
@@ -97,6 +100,8 @@ class Client:
                     send_message(conn, category=DRAW_CARD_MESSAGE)
                 else:
                     send_message(conn, category=SKIP_TURN_MESSAGE)
+
+            self.is_turn = False
 
     def server_listener(self):
         while True:
@@ -110,10 +115,15 @@ class Client:
                 print(f"{msg.get('username')} joined")
                 self.opponents.append({"username": msg.get("username")})
 
+            if msg.get("category") == CREATE_GAME_MESSAGE:
+                self.game_id = msg.get("id_")
+
             if msg.get("category") == START_GAME_MESSAGE:
+                print("starting")
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
                 self.current_effects = msg.get("current_effects")
+                self.game_in_progress = True
                 self.is_turn = msg.get("is_turn")
                 self.hand = msg.get("hand")
 
@@ -121,7 +131,10 @@ class Client:
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
                 self.current_effects = msg.get("current_effects")
-                # TODO do something with msg['player']
+                self.hand = msg.get("hand")
+                self.is_turn = msg.get("is_turn")
+                print(self.is_turn)
+                print(f"{msg['player']} played {self.current_colour} {self.current_number} {self.current_effects}")
 
             if msg.get("category") == DRAW_CARD_MESSAGE:
                 self.hand.append(
