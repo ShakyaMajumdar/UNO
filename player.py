@@ -10,6 +10,8 @@ class Player:
     is_game_host: bool
     game_id: str
 
+    drew_from_pile: bool
+
     def __init__(
         self, username: str, conn: socket.socket, is_game_host: bool, game_id: str
     ):
@@ -18,6 +20,7 @@ class Player:
         self.hand = []
         self.is_game_host = is_game_host
         self.game_id = game_id
+        self.drew_from_pile = False
 
     def give_card(self, card: Card) -> None:
         self.hand.append(card)

@@ -1,7 +1,6 @@
 import socket
 import threading
 
-from card import card_list_json
 from game import Game
 from player import Player
 from utils import receive_message, send_message, generate_random_id
@@ -19,6 +18,7 @@ GAME_NOT_FOUND_MESSAGE = "!INVALID_GAME"
 START_GAME_MESSAGE = "!START"
 CARD_PLAYED_MESSAGE = "!MOVE"
 DRAW_CARD_MESSAGE = "!DRAW"
+SKIP_TURN_MESSAGE = "!SKIP"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
@@ -87,7 +87,10 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
                 send_message(
                     player_.conn,
                     category=START_GAME_MESSAGE,
-                    discard_pile=card_list_json(game.discard_pile),
+                    current_colour=game.current_colour,
+                    current_number=game.current_number,
+                    current_effects=game.current_effects,
+                    is_turn=player_ == game.current_turn,
                     hand=player_.hand_json(),
                 )
 
@@ -98,6 +101,9 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
                 continue
             player = players_by_conn[conn]
             game = on_going_games_by_id[player.game_id]
+            if not game.current_turn == player:
+                continue
+
             update = game.update(
                 player, msg["card_index"], msg["colour_change_to"], msg["uno_called"]
             )
@@ -110,6 +116,7 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
                             player_.conn,
                             category=CARD_PLAYED_MESSAGE,
                             player=player.username,
+                            is_turn=player_ == game.current_turn,
                             **update,
                         )
 
@@ -118,15 +125,25 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
         if msg.get("category") == DRAW_CARD_MESSAGE:
             player = players_by_conn[conn]
             game = on_going_games_by_id[player.game_id]
-            card = game.draw_card()
-            player.give_card(card)
-            send_message(
-                conn,
-                category=DRAW_CARD_MESSAGE,
-                colour=card.colour,
-                number=card.number,
-                effects=card.effects,
-            )
+            if not player.drew_from_pile:
+                card = game.draw_card()
+                player.give_card(card)
+                player.drew_from_pile = True
+                send_message(
+                    conn,
+                    category=DRAW_CARD_MESSAGE,
+                    colour=card.colour,
+                    number=card.number,
+                    effects=card.effects,
+                )
+
+        if msg.get("category") == SKIP_TURN_MESSAGE:
+            player = players_by_conn[conn]
+            game = on_going_games_by_id[player.game_id]
+            if not player.drew_from_pile:
+                continue
+            game.current_turn = next(game.turns)
+            player.drew_from_pile = False
 
     conn.close()
     print(f"[CONNECTION CLOSED] {addr} disconnected", flush=True)

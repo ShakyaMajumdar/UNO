@@ -15,6 +15,7 @@ class Game:
     discard_pile: list[Card]
     players: list[Player]
     turns: itertools.cycle
+    current_turn: Player
 
     current_number: Optional[int]
     current_colour: str
@@ -77,6 +78,7 @@ class Game:
         self.current_plus_amount = 0
 
         self.turns = itertools.cycle(self.players)
+        self.current_turn = next(self.turns)
 
     def update(
         self,
@@ -87,7 +89,7 @@ class Game:
     ) -> dict[str, Union[str, Player]]:
 
         card_played = player.hand[card_index]
-        next(self.turns)
+        self.current_turn = next(self.turns)
         self.discard_pile.append(card_played)
         player.hand.remove(card_played)
 

@@ -16,6 +16,7 @@ START_GAME_MESSAGE = "!START"
 CARD_PLAYED_MESSAGE = "!MOVE"
 DRAW_CARD_MESSAGE = "!DRAW"
 GAME_OVER_MESSAGE = "!END"
+SKIP_TURN_MESSAGE = "!SKIP"
 
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
@@ -30,6 +31,8 @@ class Client:
 
     game_in_progress: bool
     game_id: Optional[str]
+    is_turn: bool
+    drew_card_from_pile: bool
 
     hand: Optional[list[dict]]
     opponents: list[dict]
@@ -43,6 +46,9 @@ class Client:
         self.game_id = None
         self.hand = None
         self.opponents = []
+        self.is_turn = False
+
+        self.drew_card_from_pile = False
 
     def run(self):
         threading.Thread(target=self.server_listener).start()
@@ -65,6 +71,8 @@ class Client:
         print("game started")
 
         while self.game_in_progress:
+            if not self.is_turn:
+                continue
             print(self.hand)
 
             a = input("can play? (y/n)")
@@ -85,7 +93,10 @@ class Client:
                 )
 
             if a == "n":
-                send_message(conn, category=DRAW_CARD_MESSAGE)
+                if not self.drew_card_from_pile:
+                    send_message(conn, category=DRAW_CARD_MESSAGE)
+                else:
+                    send_message(conn, category=SKIP_TURN_MESSAGE)
 
     def server_listener(self):
         while True:
@@ -100,6 +111,10 @@ class Client:
                 self.opponents.append({"username": msg.get("username")})
 
             if msg.get("category") == START_GAME_MESSAGE:
+                self.current_colour = msg.get("current_colour")
+                self.current_number = msg.get("current_number")
+                self.current_effects = msg.get("current_effects")
+                self.is_turn = msg.get("is_turn")
                 self.hand = msg.get("hand")
 
             if msg.get("category") == CARD_PLAYED_MESSAGE:
