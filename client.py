@@ -17,6 +17,7 @@ CARD_PLAYED_MESSAGE = "!MOVE"
 DRAW_CARD_MESSAGE = "!DRAW"
 GAME_OVER_MESSAGE = "!END"
 SKIP_TURN_MESSAGE = "!SKIP"
+UNCALLED_UNO_MESSAGE = "!CAUGHT"
 
 SERVER = socket.gethostbyname(socket.gethostname())
 ADDR = (SERVER, PORT)
@@ -33,6 +34,7 @@ class Client:
     game_id: Optional[str]
     is_turn: bool
     drew_card_from_pile: bool
+    uncalled_uno: bool
 
     hand: Optional[list[dict]]
     opponents: list[dict]
@@ -47,7 +49,7 @@ class Client:
         self.hand = None
         self.opponents = []
         self.is_turn = False
-
+        self.uncalled_uno = False
         self.drew_card_from_pile = False
 
     def run(self):
@@ -73,8 +75,15 @@ class Client:
         print("game started")
 
         while self.game_in_progress:
+
+            if self.uncalled_uno:
+                print("you forgot to call uno! Your new hand: ")
+                print(self.hand)
+                self.uncalled_uno = False
+
             if not self.is_turn:
                 continue
+
             print(self.current_colour, self.current_number, self.current_effects)
             print(self.hand)
 
@@ -144,6 +153,10 @@ class Client:
                         "effects": msg["effects"],
                     }
                 )
+
+            if msg.get("category") == UNCALLED_UNO_MESSAGE:
+                self.uncalled_uno = True
+                self.hand = msg["hand"]
 
 
 client = Client()

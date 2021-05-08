@@ -19,6 +19,7 @@ START_GAME_MESSAGE = "!START"
 CARD_PLAYED_MESSAGE = "!MOVE"
 DRAW_CARD_MESSAGE = "!DRAW"
 SKIP_TURN_MESSAGE = "!SKIP"
+UNCALLED_UNO_MESSAGE = "!CAUGHT"
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
@@ -107,12 +108,11 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
             update = game.update(
                 player, msg["card_index"], msg["colour_change_to"], msg["uno_called"]
             )
-            print(update)
-            print(game.current_turn.username)
-            print(game.current_colour, game.current_number, game.current_effects)
 
             if update["status"] == "invalid_card":
                 send_message(conn, category=CARD_PLAYED_MESSAGE, **update)
+            elif update["status"] == "uncalled_uno":
+                send_message(conn, category=UNCALLED_UNO_MESSAGE, hand=player.hand_json())
             else:
                 for player_ in game.players:
                     print(player_.username, player_ == game.current_turn)
