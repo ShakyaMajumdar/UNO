@@ -10,7 +10,7 @@ HEADER = 64
 def generate_random_id(preexisting_ids: set[str]) -> str:
     id_ = ""
     while not id_ or id_ in preexisting_ids:
-        id_ = "".join(random.choices(string.ascii_letters, k=6))
+        id_ = "".join(random.choices(string.ascii_uppercase, k=6))
     return id_
 
 

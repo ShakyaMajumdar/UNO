@@ -42,6 +42,9 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
 
                 if not game.players:
                     on_going_games_by_id.pop(game.id_)
+                if player.is_game_host:
+                    game.players[0].is_game_host = True
+
                 players_by_conn.pop(conn)
             connected = False
 
@@ -59,7 +62,21 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
                 print(f"[JOIN] {addr} joining game {game.id_}", flush=True)
 
                 for player_ in game.players:
-                    send_message(player_.conn, category=JOIN_GAME_MESSAGE, username=player.username)
+                    if player_ != player:
+                        send_message(
+                            player_.conn,
+                            category=JOIN_GAME_MESSAGE,
+                            username=player.username,
+                        )
+
+                opponents = [
+                    {"username": player_.username, "is_host": player_.is_game_host}
+                    for player_ in game.players
+                    if player_ != player
+                ]
+                send_message(
+                    player.conn, category=JOIN_GAME_MESSAGE, opponents=opponents
+                )
             else:
                 send_message(conn, category=GAME_NOT_FOUND_MESSAGE)
 
@@ -112,7 +129,9 @@ def handle_client(conn: socket.socket, addr: tuple[str, int]):
             if update["status"] == "invalid_card":
                 send_message(conn, category=CARD_PLAYED_MESSAGE, **update)
             elif update["status"] == "uncalled_uno":
-                send_message(conn, category=UNCALLED_UNO_MESSAGE, hand=player.hand_json())
+                send_message(
+                    conn, category=UNCALLED_UNO_MESSAGE, hand=player.hand_json()
+                )
             else:
                 for player_ in game.players:
                     print(player_.username, player_ == game.current_turn)
