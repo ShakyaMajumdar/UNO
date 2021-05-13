@@ -361,7 +361,9 @@ class Client:
                 self.joined_game = True
                 if "username" in msg:
                     print(f"{msg.get('username')} joined")
-                    self.opponents.append({"username": msg.get("username"), "is_host": False})
+                    self.opponents.append(
+                        {"username": msg.get("username"), "is_host": False}
+                    )
                 else:
                     self.opponents = msg["opponents"]
                 print(self.opponents)

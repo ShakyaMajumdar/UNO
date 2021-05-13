@@ -1,7 +1,5 @@
 import json
-import random
 import socket
-import string
 
 FORMAT = "utf-8"
 HEADER = 64

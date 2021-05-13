@@ -128,7 +128,10 @@ class Server:
                     continue
 
                 update = game.update(
-                    player, msg["card_index"], msg["colour_change_to"], msg["uno_called"]
+                    player,
+                    msg["card_index"],
+                    msg["colour_change_to"],
+                    msg["uno_called"],
                 )
 
                 if update["status"] == "invalid_card":
@@ -149,7 +152,10 @@ class Server:
                             **update,
                         )
 
-                print(f"[PLAY] {addr} played {msg['card_index']} in {game.id_}", flush=True)
+                print(
+                    f"[PLAY] {addr} played {msg['card_index']} in {game.id_}",
+                    flush=True,
+                )
 
             if msg.get("category") == DRAW_CARD_MESSAGE:
                 player = self.players_by_conn[conn]
