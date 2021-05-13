@@ -7,7 +7,8 @@ import pygame
 import pygame.freetype
 import pygame_widgets
 
-from utils import send_message, receive_message
+from .asset_loader import background_gradient, girassol_font
+from .utils import send_message, receive_message
 
 HEADER = 64
 PORT = 5050
@@ -33,7 +34,7 @@ conn.connect(ADDR)
 MENU_WINDOW_SIZE = (600, 600)
 
 MENU_BACKGROUND_IMAGE = pygame.transform.smoothscale(
-    pygame.image.load("assets/gradient.png"), MENU_WINDOW_SIZE
+    background_gradient, MENU_WINDOW_SIZE
 )
 
 BLACK = (0, 0, 0)
@@ -78,7 +79,7 @@ class Client:
         self.disconnected = False
 
         pygame.init()
-        self.font = pygame.font.Font("assets/Girassol/Girassol-Regular.ttf", 30)
+        self.font = girassol_font
 
     def run(self):
         threading.Thread(target=self.server_listener).start()
@@ -401,8 +402,3 @@ class Client:
                 self.uncalled_uno = True
                 self.hand = msg["hand"]
         sys.exit()
-
-
-client = Client()
-client.run()
-send_message(conn, category=DISCONNECT_MESSAGE)

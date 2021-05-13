@@ -2,8 +2,8 @@ import itertools
 import random
 from typing import Optional, Union
 
-from card import Card, get_fresh_deck
-from player import Player
+from .card import Card, get_fresh_deck
+from .player import Player
 
 
 class OutOfCardsException(Exception):

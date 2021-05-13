@@ -1,6 +1,6 @@
 import socket
 
-from card import Card, card_list_json
+from .card import Card, card_list_json
 
 
 class Player:
