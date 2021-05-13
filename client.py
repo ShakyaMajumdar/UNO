@@ -36,6 +36,8 @@ MENU_BACKGROUND_IMAGE = pygame.transform.smoothscale(
     pygame.image.load("assets/gradient.png"), MENU_WINDOW_SIZE
 )
 
+BLACK = (0, 0, 0)
+
 
 class Client:
     username: str
@@ -112,9 +114,9 @@ class Client:
             height=60,
             fontSize=30,
             font=self.font,
-            borderColour=(0, 0, 0),
+            borderColour=BLACK,
             radius=10,
-            textColour=(0, 0, 0),
+            textColour=BLACK,
             borderThickness=2,
         )
 
@@ -126,9 +128,9 @@ class Client:
             height=60,
             fontSize=30,
             font=self.font,
-            borderColour=(0, 0, 0),
+            borderColour=BLACK,
             radius=10,
-            textColour=(0, 0, 0),
+            textColour=BLACK,
             borderThickness=2,
             onSubmit=invite_code_listener,
         )
@@ -141,9 +143,9 @@ class Client:
             height=60,
             fontSize=60,
             font=self.font,
-            borderColour=(0, 0, 0),
+            borderColour=BLACK,
             radius=10,
-            textColour=(0, 0, 0),
+            textColour=BLACK,
             borderThickness=2,
             onClick=join_button_listener,
             text="Join with Invite",
@@ -159,9 +161,9 @@ class Client:
             height=60,
             font=self.font,
             fontSize=60,
-            borderColour=(0, 0, 0),
+            borderColour=BLACK,
             radius=10,
-            textColour=(0, 0, 0),
+            textColour=BLACK,
             borderThickness=2,
             onClick=create_button_listener,
             text="Create New",
@@ -194,7 +196,7 @@ class Client:
             if self.showing_menu:
                 screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
                 screen.blit(
-                    self.font.render("Username", True, (0, 0, 0)),
+                    self.font.render("Username", True, BLACK),
                     (
                         MENU_WINDOW_SIZE[0] // 2 - self.font.size("Username")[0] // 2,
                         MENU_WINDOW_SIZE[1] // 4 - 50,
@@ -224,11 +226,11 @@ class Client:
 
                     screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
                     screen.blit(
-                        self.font.render(invite_code_message, True, (0, 0, 0)),
+                        self.font.render(invite_code_message, True, BLACK),
                         (MENU_WINDOW_SIZE[0] // 2 - icm_width // 2, 100),
                     )
                     screen.blit(
-                        self.font.render(players_joined_message, True, (0, 0, 0)),
+                        self.font.render(players_joined_message, True, BLACK),
                         (
                             MENU_WINDOW_SIZE[0] // 2
                             - self.font.size(players_joined_message)[0] // 2,
@@ -243,7 +245,7 @@ class Client:
                             self.font.render(
                                 f"{i}. {player['username']} {'(host)' if player['is_host'] else ''}",
                                 True,
-                                (0, 0, 0),
+                                BLACK,
                             ),
                             (100, 210 + self.font.get_linesize() * i),
                         )
@@ -259,7 +261,7 @@ class Client:
                     if not self.joined_game:
                         screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
                         screen.blit(
-                            self.font.render("Invite Code: ", True, (0, 0, 0)),
+                            self.font.render("Invite Code: ", True, BLACK),
                             (
                                 MENU_WINDOW_SIZE[0] // 2
                                 - self.font.size("Invite Code: ")[0] // 2,
@@ -272,7 +274,7 @@ class Client:
                         waiting_message = "Waiting for host to start..."
                         players_joined_message = f"Players: {len(self.opponents) + 1}/4"
                         screen.blit(
-                            self.font.render(waiting_message, True, (0, 0, 0)),
+                            self.font.render(waiting_message, True, BLACK),
                             (
                                 MENU_WINDOW_SIZE[0] // 2
                                 - self.font.size(waiting_message)[0] // 2,
@@ -280,7 +282,7 @@ class Client:
                             ),
                         )
                         screen.blit(
-                            self.font.render(players_joined_message, True, (0, 0, 0)),
+                            self.font.render(players_joined_message, True, BLACK),
                             (
                                 MENU_WINDOW_SIZE[0] // 2
                                 - self.font.size(players_joined_message)[0] // 2,
@@ -296,7 +298,7 @@ class Client:
                                 self.font.render(
                                     f"{i}. {player['username']} {'(host)' if player['is_host'] else ''}",
                                     True,
-                                    (0, 0, 0),
+                                    BLACK,
                                 ),
                                 (100, 210 + self.font.get_linesize() * i),
                             )
