@@ -55,7 +55,7 @@ class Client:
 
     current_colour: Optional[str]
     current_number: Optional[int]
-    current_effects: Optional[list]
+    current_effects: Optional[tuple[str]]
 
     showing_menu: bool
     joined_game: bool
@@ -375,7 +375,7 @@ class Client:
                 print("starting")
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
-                self.current_effects = msg.get("current_effects")
+                self.current_effects = tuple(msg.get("current_effects"))
                 self.game_in_progress = True
                 self.is_turn = msg.get("is_turn")
                 self.hand = msg.get("hand")
@@ -383,7 +383,7 @@ class Client:
             if msg.get("category") == CARD_PLAYED_MESSAGE:
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
-                self.current_effects = msg.get("current_effects")
+                self.current_effects = tuple(msg.get("current_effects"))
                 self.hand = msg.get("hand")
                 self.is_turn = msg.get("is_turn")
                 print(self.is_turn)
