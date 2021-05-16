@@ -7,7 +7,7 @@ import pygame
 import pygame.freetype
 import pygame_widgets
 
-from .asset_loader import background_gradient, girassol_font
+from .asset_loader import load_assets
 from .utils import send_message, receive_message
 
 HEADER = 64
@@ -33,9 +33,6 @@ conn.connect(ADDR)
 
 MENU_WINDOW_SIZE = (600, 600)
 
-MENU_BACKGROUND_IMAGE = pygame.transform.smoothscale(
-    background_gradient, MENU_WINDOW_SIZE
-)
 
 BLACK = (0, 0, 0)
 
@@ -63,6 +60,8 @@ class Client:
     disconnected: bool
 
     font: pygame.font.Font
+    menu_background: pygame.Surface
+    card_sprites: dict[tuple[Optional[str], Optional[int], tuple[str]], pygame.Surface]
 
     def __init__(self):
         self.game_in_progress = False
@@ -79,7 +78,10 @@ class Client:
         self.disconnected = False
 
         pygame.init()
-        self.font = girassol_font
+        self.menu_background, self.font, self.card_sprites = load_assets()
+        self.menu_background = pygame.transform.smoothscale(
+            self.menu_background, MENU_WINDOW_SIZE
+        )
 
     def run(self):
         threading.Thread(target=self.server_listener).start()
@@ -195,7 +197,7 @@ class Client:
                     sys.exit()
 
             if self.showing_menu:
-                screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
+                screen.blit(self.menu_background, (0, 0))
                 screen.blit(
                     self.font.render("Username", True, BLACK),
                     (
@@ -225,7 +227,7 @@ class Client:
                     players_joined_message = f"Players: {len(self.opponents) + 1}/4"
                     icm_width, icm_height = self.font.size(invite_code_message)
 
-                    screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
+                    screen.blit(self.menu_background, (0, 0))
                     screen.blit(
                         self.font.render(invite_code_message, True, BLACK),
                         (MENU_WINDOW_SIZE[0] // 2 - icm_width // 2, 100),
@@ -258,9 +260,9 @@ class Client:
                     continue
 
                 else:
-                    screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
+                    screen.blit(self.menu_background, (0, 0))
                     if not self.joined_game:
-                        screen.blit(MENU_BACKGROUND_IMAGE, (0, 0))
+                        screen.blit(self.menu_background, (0, 0))
                         screen.blit(
                             self.font.render("Invite Code: ", True, BLACK),
                             (
