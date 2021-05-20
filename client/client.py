@@ -1,6 +1,8 @@
+import os
 import socket
 import sys
 import threading
+import time
 from typing import Optional
 
 import pygame
@@ -31,9 +33,6 @@ ADDR = (SERVER, PORT)
 conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 conn.connect(ADDR)
 
-MENU_WINDOW_SIZE = (600, 600)
-
-
 BLACK = (0, 0, 0)
 
 
@@ -45,7 +44,8 @@ class Client:
     game_id: Optional[str]
     is_turn: bool
     drew_card_from_pile: bool
-    uncalled_uno: bool
+    called_uno: bool
+    caught: bool
 
     hand: Optional[list[dict]]
     opponents: list[dict]
@@ -60,7 +60,10 @@ class Client:
     disconnected: bool
 
     font: pygame.font.Font
+    menu_window_size: tuple[int, int]
+    game_window_size: tuple[int, int]
     menu_background: pygame.Surface
+    game_background: pygame.Surface
     card_sprites: dict[tuple[Optional[str], Optional[int], tuple[str]], pygame.Surface]
 
     def __init__(self):
@@ -69,7 +72,8 @@ class Client:
         self.hand = None
         self.opponents = []
         self.is_turn = False
-        self.uncalled_uno = False
+        self.called_uno = False
+        self.caught = False
         self.drew_card_from_pile = False
 
         self.showing_menu = True
@@ -77,15 +81,27 @@ class Client:
         self.valid_invite = False
         self.disconnected = False
 
+        os.environ["SDL_VIDEO_CENTERED"] = "1"
+        os.environ["SDL_VIDEO_WINDOW_POS"] = "0,0"
         pygame.init()
-        self.menu_background, self.font, self.card_sprites = load_assets()
+
+        self.menu_window_size = (600, 600)
+        screen_info = pygame.display.Info()
+        self.game_window_size = int(0.9 * screen_info.current_w), int(
+            0.9 * screen_info.current_h
+        )
+
+        gradient, self.font, self.card_sprites = load_assets()
         self.menu_background = pygame.transform.smoothscale(
-            self.menu_background, MENU_WINDOW_SIZE
+            gradient, self.menu_window_size
+        )
+        self.game_background = pygame.transform.smoothscale(
+            gradient, self.game_window_size
         )
 
     def run(self):
         threading.Thread(target=self.server_listener).start()
-        screen = pygame.display.set_mode(MENU_WINDOW_SIZE)
+        screen = pygame.display.set_mode(self.menu_window_size)
 
         def create_button_listener():
             self.showing_menu = False
@@ -100,6 +116,7 @@ class Client:
 
         def game_start_button_listener():
             send_message(conn, category=START_GAME_MESSAGE)
+            time.sleep(0.1)
 
         def invite_code_listener():
             send_message(
@@ -109,10 +126,50 @@ class Client:
                 username=self.username,
             )
 
+        def card_click_listener(card_index):
+            if not self.is_turn:
+                print("not your turn")
+                return
+            card_played = self.hand[card_index]
+            if not (
+                    "colour_change" in card_played["effects"]
+                    or self.current_colour == card_played["colour"]
+                    or self.current_number == card_played["number"]
+                    or set(self.current_effects).intersection(card_played["effects"])
+            ):
+                return
+
+            send_message(
+                conn,
+                category=CARD_PLAYED_MESSAGE,
+                card_index=card_index,
+                colour_change_to=None,
+                uno_called=self.called_uno,
+            )
+
+            self.hand.pop(card_index)
+            self.is_turn = False
+            self.drew_card_from_pile = False
+
+        def draw_card_button_listener():
+            if not self.is_turn:
+                return
+            if not self.drew_card_from_pile:
+                send_message(conn, category=DRAW_CARD_MESSAGE)
+                self.drew_card_from_pile = True
+
+            else:
+                send_message(conn, category=SKIP_TURN_MESSAGE)
+                self.is_turn = False
+                self.drew_card_from_pile = False
+
+        def uno_call_button_listener():
+            self.called_uno = True
+
         username_textbox = pygame_widgets.TextBox(
             screen,
-            x=MENU_WINDOW_SIZE[0] // 2 - 100,
-            y=MENU_WINDOW_SIZE[1] // 4,
+            x=self.menu_window_size[0] // 2 - 100,
+            y=self.menu_window_size[1] // 4,
             width=200,
             height=60,
             fontSize=30,
@@ -125,8 +182,8 @@ class Client:
 
         invite_code_textbox = pygame_widgets.TextBox(
             screen,
-            x=MENU_WINDOW_SIZE[0] // 2 - 100,
-            y=MENU_WINDOW_SIZE[1] // 4,
+            x=self.menu_window_size[0] // 2 - 100,
+            y=self.menu_window_size[1] // 4,
             width=200,
             height=60,
             fontSize=30,
@@ -140,8 +197,8 @@ class Client:
 
         join_button = pygame_widgets.Button(
             screen,
-            x=MENU_WINDOW_SIZE[0] // 2 - 125,
-            y=3 * MENU_WINDOW_SIZE[1] // 4,
+            x=self.menu_window_size[0] // 2 - 125,
+            y=3 * self.menu_window_size[1] // 4,
             width=250,
             height=60,
             fontSize=60,
@@ -158,8 +215,8 @@ class Client:
 
         create_button = pygame_widgets.Button(
             screen,
-            x=MENU_WINDOW_SIZE[0] // 2 - 125,
-            y=MENU_WINDOW_SIZE[1] // 2,
+            x=self.menu_window_size[0] // 2 - 125,
+            y=self.menu_window_size[1] // 2,
             width=250,
             height=60,
             font=self.font,
@@ -176,8 +233,8 @@ class Client:
 
         game_start_button = pygame_widgets.Button(
             screen,
-            x=MENU_WINDOW_SIZE[0] // 2 - 100,
-            y=3 * MENU_WINDOW_SIZE[1] // 4,
+            x=self.menu_window_size[0] // 2 - 100,
+            y=3 * self.menu_window_size[1] // 4,
             width=200,
             height=50,
             fontSize=30,
@@ -201,8 +258,9 @@ class Client:
                 screen.blit(
                     self.font.render("Username", True, BLACK),
                     (
-                        MENU_WINDOW_SIZE[0] // 2 - self.font.size("Username")[0] // 2,
-                        MENU_WINDOW_SIZE[1] // 4 - 50,
+                        self.menu_window_size[0] // 2
+                        - self.font.size("Username")[0] // 2,
+                        self.menu_window_size[1] // 4 - 50,
                     ),
                 )
 
@@ -230,12 +288,12 @@ class Client:
                     screen.blit(self.menu_background, (0, 0))
                     screen.blit(
                         self.font.render(invite_code_message, True, BLACK),
-                        (MENU_WINDOW_SIZE[0] // 2 - icm_width // 2, 100),
+                        (self.menu_window_size[0] // 2 - icm_width // 2, 100),
                     )
                     screen.blit(
                         self.font.render(players_joined_message, True, BLACK),
                         (
-                            MENU_WINDOW_SIZE[0] // 2
+                            self.menu_window_size[0] // 2
                             - self.font.size(players_joined_message)[0] // 2,
                             200,
                         ),
@@ -266,7 +324,7 @@ class Client:
                         screen.blit(
                             self.font.render("Invite Code: ", True, BLACK),
                             (
-                                MENU_WINDOW_SIZE[0] // 2
+                                self.menu_window_size[0] // 2
                                 - self.font.size("Invite Code: ")[0] // 2,
                                 100,
                             ),
@@ -279,7 +337,7 @@ class Client:
                         screen.blit(
                             self.font.render(waiting_message, True, BLACK),
                             (
-                                MENU_WINDOW_SIZE[0] // 2
+                                self.menu_window_size[0] // 2
                                 - self.font.size(waiting_message)[0] // 2,
                                 100,
                             ),
@@ -287,7 +345,7 @@ class Client:
                         screen.blit(
                             self.font.render(players_joined_message, True, BLACK),
                             (
-                                MENU_WINDOW_SIZE[0] // 2
+                                self.menu_window_size[0] // 2
                                 - self.font.size(players_joined_message)[0] // 2,
                                 200,
                             ),
@@ -309,20 +367,98 @@ class Client:
                     pygame.display.update()
                     continue
 
-            print("game started")
+            if self.game_in_progress:
+                pygame.display.set_mode(self.game_window_size)
 
-            while self.game_in_progress:
-
-                if self.uncalled_uno:
+                screen.blit(self.game_background, (0, 0))
+                if self.caught:
                     print("you forgot to call uno! Your new hand: ")
                     print(self.hand)
-                    self.uncalled_uno = False
+                    self.caught = False
 
-                if not self.is_turn:
-                    continue
+                card_width = 218
+                card_height = 328
 
-                print(self.current_colour, self.current_number, self.current_effects)
-                print(self.hand)
+                current_card = self.card_sprites[
+                    self.current_colour, self.current_number, self.current_effects
+                ]
+                screen.blit(
+                    current_card,
+                    (
+                        (self.game_window_size[0] - card_width) // 2,
+                        (self.game_window_size[1] - card_height) // 2,
+                    ),
+                )
+
+                pad = max((50, 50 + card_width * (7 - len(self.hand))))
+                card_sprite_allowed_width = (
+                    (self.game_window_size[0] - pad - card_width) / (len(self.hand) - 1)
+                    if len(self.hand) > 1
+                    else card_width
+                )
+
+                for i, card in enumerate(self.hand):
+                    card_sprite = self.card_sprites[
+                        card["colour"], card["number"], card["effects"]
+                    ]
+                    start_x = int(pad / 2 + card_sprite_allowed_width * i)
+                    start_y = 300
+                    screen.blit(
+                        card_sprite,
+                        (
+                            start_x,
+                            start_y,
+                        ),
+                    )
+
+                    card_click_button = pygame_widgets.Button(
+                        screen,
+                        start_x,
+                        start_y,
+                        card_sprite_allowed_width
+                        if i < len(self.hand) - 1
+                        else card_width,
+                        card_height,
+                        onClick=card_click_listener,
+                        onClickParams=(i,),
+                    )
+
+                    card_click_button.listen(events)
+
+                draw_card_button = pygame_widgets.Button(
+                    screen,
+                    x=100,
+                    y=100,
+                    width=200,
+                    height=50,
+                    fontSize=30,
+                    font=self.font,
+                    radius=10,
+                    onClick=draw_card_button_listener,
+                    text="Skip turn!" if self.drew_card_from_pile else "Draw card from deck!"
+                )
+
+                draw_card_button.draw()
+                draw_card_button.listen(events)
+
+                uno_call_button = pygame_widgets.Button(
+                    screen,
+                    x=600,
+                    y=100,
+                    width=100,
+                    height=50,
+                    fontSize=30,
+                    font=self.font,
+                    radius=10,
+                    onClick=uno_call_button_listener,
+                    text="Say UNO!"
+                )
+
+                uno_call_button.draw()
+                uno_call_button.listen(events)
+
+                pygame.display.update()
+                continue
 
                 a = input("can play? (y/n) ")
                 if a == "y":
@@ -341,21 +477,18 @@ class Client:
                         uno_called=uno == "y",
                     )
 
-                if a == "n":
-                    if not self.drew_card_from_pile:
-                        send_message(conn, category=DRAW_CARD_MESSAGE)
-                    else:
-                        send_message(conn, category=SKIP_TURN_MESSAGE)
-
-                self.is_turn = False
-
-            pygame.display.update()
-
     def server_listener(self):
         while not self.disconnected:
             msg = receive_message(conn)
+            if msg.get("category") == DISCONNECT_MESSAGE:
+                if msg.get("username") == self.username:
+                    continue
+                for player in self.opponents:
+                    if player["username"] == msg.get("username"):
+                        self.opponents.remove(player)
+                        break
+
             if msg.get("category") == GAME_OVER_MESSAGE:
-                print("ending game")
                 self.game_in_progress = False
                 break
 
@@ -368,27 +501,28 @@ class Client:
                     )
                 else:
                     self.opponents = msg["opponents"]
-                print(self.opponents)
 
             if msg.get("category") == CREATE_GAME_MESSAGE:
                 self.game_id = msg.get("id_")
 
             if msg.get("category") == START_GAME_MESSAGE:
-                print("starting")
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
                 self.current_effects = tuple(msg.get("current_effects"))
                 self.game_in_progress = True
                 self.is_turn = msg.get("is_turn")
-                self.hand = msg.get("hand")
+                self.hand = [
+                    i | {"effects": tuple(i["effects"])} for i in msg.get("hand")
+                ]
 
             if msg.get("category") == CARD_PLAYED_MESSAGE:
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
                 self.current_effects = tuple(msg.get("current_effects"))
-                self.hand = msg.get("hand")
+                self.hand = [
+                    i | {"effects": tuple(i["effects"])} for i in msg.get("hand")
+                ]
                 self.is_turn = msg.get("is_turn")
-                print(self.is_turn)
                 print(
                     f"{msg['player']} played {self.current_colour} {self.current_number} {self.current_effects}"
                 )
@@ -398,11 +532,16 @@ class Client:
                     {
                         "colour": msg["colour"],
                         "number": msg["number"],
-                        "effects": msg["effects"],
+                        "effects": tuple(msg["effects"]),
                     }
                 )
 
+            if msg.get("category") == SKIP_TURN_MESSAGE:
+                self.is_turn = msg.get("is_turn")
+
             if msg.get("category") == UNCALLED_UNO_MESSAGE:
-                self.uncalled_uno = True
-                self.hand = msg["hand"]
+                self.caught = True
+                self.hand = [
+                    i | {"effects": tuple(i["effects"])} for i in msg.get("hand")
+                ]
         sys.exit()

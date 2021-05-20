@@ -66,7 +66,7 @@ class Game:
         random.shuffle(self.draw_pile)
 
         for player in self.players:
-            for _ in range(13):
+            for _ in range(7):
                 player.give_card(self.draw_card())
 
         while self.draw_pile[-1].effects:

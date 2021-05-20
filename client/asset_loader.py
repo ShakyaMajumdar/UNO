@@ -24,15 +24,15 @@ def load_assets() -> tuple[
             cards_sprites[colour.name, number, ()] = pygame.image.load(
                 f"client/assets/cards/{colour.name}_{number}.png"
             )
-        for effect in ("plus_two", "reverse", "skip"):
+        for effect in ("+2", "reverse", "skip"):
             cards_sprites[colour.name, None, (effect,)] = pygame.image.load(
                 f"client/assets/cards/{colour.name}_{effect}.png"
             )
 
-    cards_sprites[None, None, ("colour_change",)] = pygame.image.load(
+    cards_sprites[None, None, ("colour change",)] = pygame.image.load(
         "client/assets/cards/wild.png"
     )
-    cards_sprites[None, None, ("colour_change", "+4")] = pygame.image.load(
+    cards_sprites[None, None, ("colour change", "+4")] = pygame.image.load(
         "client/assets/cards/plus_four.png"
     )
 

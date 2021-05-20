@@ -43,11 +43,13 @@ class Server:
                 if conn in self.players_by_conn:
                     player = self.players_by_conn[conn]
                     game = self.on_going_games_by_id[player.game_id]
+                    for player_ in game.players:
+                        send_message(player_.conn, category=DISCONNECT_MESSAGE, player=player.username)
                     game.remove_player(player)
 
                     if not game.players:
                         self.on_going_games_by_id.pop(game.id_)
-                    if player.is_game_host:
+                    elif player.is_game_host:
                         game.players[0].is_game_host = True
 
                     self.players_by_conn.pop(conn)
@@ -142,7 +144,6 @@ class Server:
                     )
                 else:
                     for player_ in game.players:
-                        print(player_.username, player_ == game.current_turn)
                         send_message(
                             player_.conn,
                             category=CARD_PLAYED_MESSAGE,
@@ -179,6 +180,8 @@ class Server:
                     continue
                 game.current_turn = next(game.turns)
                 player.drew_from_pile = False
+                for player_ in game.players:
+                    send_message(player_.conn, category=SKIP_TURN_MESSAGE, is_turn=player_ == game.current_turn)
 
         conn.close()
         print(f"[CONNECTION CLOSED] {addr} disconnected", flush=True)
