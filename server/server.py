@@ -3,7 +3,12 @@ import threading
 
 from .game import Game
 from .player import Player
-from .utils import receive_message, send_message, generate_random_id
+from .utils import (
+    receive_message,
+    send_message,
+    generate_random_id,
+    generate_discriminator,
+)
 
 HEADER = 64
 PORT = 5050
@@ -26,12 +31,14 @@ class Server:
     server: socket.socket
     on_going_games_by_id: dict[str, Game]
     players_by_conn: dict[socket.socket, Player]
+    player_usernames: set[str]
 
     def __init__(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind(ADDR)
         self.on_going_games_by_id = {}
         self.players_by_conn = {}
+        self.player_usernames = set()
 
     def handle_client(self, conn: socket.socket, addr: tuple[str, int]):
         print(f"[NEW CONNECTION] {addr} connected.", flush=True)
@@ -44,7 +51,11 @@ class Server:
                     player = self.players_by_conn[conn]
                     game = self.on_going_games_by_id[player.game_id]
                     for player_ in game.players:
-                        send_message(player_.conn, category=DISCONNECT_MESSAGE, player=player.username)
+                        send_message(
+                            player_.conn,
+                            category=DISCONNECT_MESSAGE,
+                            player=player.username,
+                        )
                     game.remove_player(player)
 
                     if not game.players:
@@ -62,7 +73,12 @@ class Server:
 
                 if id_ in self.on_going_games_by_id:
                     game = self.on_going_games_by_id[id_]
-                    player = Player(msg.get("username"), conn, False, game.id_)
+                    username = (
+                        msg.get("username")
+                        + f"#{generate_discriminator(msg.get('username'), self.player_usernames)}"
+                    )
+                    self.player_usernames.add(username)
+                    player = Player(username, conn, False, game.id_)
                     game.add_player(player)
                     self.players_by_conn[conn] = player
 
@@ -73,16 +89,21 @@ class Server:
                             send_message(
                                 player_.conn,
                                 category=JOIN_GAME_MESSAGE,
+                                subcategory="other",
                                 username=player.username,
                             )
 
-                    opponents = [
-                        {"username": player_.username, "is_host": player_.is_game_host}
+                    opponents = {
+                        player_.username: {"is_host": player_.is_game_host}
                         for player_ in game.players
                         if player_ != player
-                    ]
+                    }
                     send_message(
-                        player.conn, category=JOIN_GAME_MESSAGE, opponents=opponents
+                        player.conn,
+                        category=JOIN_GAME_MESSAGE,
+                        subcategory="self",
+                        opponents=opponents,
+                        username=username,
                     )
                 else:
                     send_message(conn, category=GAME_NOT_FOUND_MESSAGE)
@@ -90,12 +111,18 @@ class Server:
             if msg.get("category") == CREATE_GAME_MESSAGE:
                 id_ = generate_random_id(set(self.on_going_games_by_id))
                 game = Game(id_)
-                player = Player(msg.get("username"), conn, True, game.id_)
+
+                username = (
+                        msg.get("username")
+                        + f"#{generate_discriminator(msg.get('username'), self.player_usernames)}"
+                )
+                self.player_usernames.add(username)
+                player = Player(username, conn, True, game.id_)
                 game.add_player(player)
 
                 self.on_going_games_by_id[id_] = game
                 self.players_by_conn[conn] = player
-                send_message(conn, category=CREATE_GAME_MESSAGE, id_=id_)
+                send_message(conn, category=CREATE_GAME_MESSAGE, id_=id_, username=username)
                 print(f"[CREATE] {addr} created game {game.id_}", flush=True)
 
             if msg.get("category") == START_GAME_MESSAGE:
@@ -181,7 +208,11 @@ class Server:
                 game.current_turn = next(game.turns)
                 player.drew_from_pile = False
                 for player_ in game.players:
-                    send_message(player_.conn, category=SKIP_TURN_MESSAGE, is_turn=player_ == game.current_turn)
+                    send_message(
+                        player_.conn,
+                        category=SKIP_TURN_MESSAGE,
+                        is_turn=player_ == game.current_turn,
+                    )
 
         conn.close()
         print(f"[CONNECTION CLOSED] {addr} disconnected", flush=True)

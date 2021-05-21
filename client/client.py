@@ -48,7 +48,7 @@ class Client:
     caught: bool
 
     hand: Optional[list[dict]]
-    opponents: list[dict]
+    opponents: dict[str, dict]
 
     current_colour: Optional[str]
     current_number: Optional[int]
@@ -70,7 +70,7 @@ class Client:
         self.game_in_progress = False
         self.game_id = None
         self.hand = None
-        self.opponents = []
+        self.opponents = {}
         self.is_turn = False
         self.called_uno = False
         self.caught = False
@@ -298,13 +298,13 @@ class Client:
                             200,
                         ),
                     )
-                    for i, player in enumerate(
-                        [{"username": self.username, "is_host": True}] + self.opponents,
+                    for i, (player_username, player_details) in enumerate(
+                        ({self.username: {"is_host": True}} | self.opponents).items(),
                         start=1,
                     ):
                         screen.blit(
                             self.font.render(
-                                f"{i}. {player['username']} {'(host)' if player['is_host'] else ''}",
+                                f"{i}. {player_username} {'(host)' if player_details['is_host'] else ''}",
                                 True,
                                 BLACK,
                             ),
@@ -350,14 +350,13 @@ class Client:
                                 200,
                             ),
                         )
-                        for i, player in enumerate(
-                            [{"username": self.username, "is_host": False}]
-                            + self.opponents,
-                            start=1,
+                        for i, (player_username, player_details) in enumerate(
+                                ({self.username: {"is_host": False}} | self.opponents).items(),
+                                start=1,
                         ):
                             screen.blit(
                                 self.font.render(
-                                    f"{i}. {player['username']} {'(host)' if player['is_host'] else ''}",
+                                    f"{i}. {player_username} {'(host)' if player_details['is_host'] else ''}",
                                     True,
                                     BLACK,
                                 ),
@@ -481,12 +480,9 @@ class Client:
         while not self.disconnected:
             msg = receive_message(conn)
             if msg.get("category") == DISCONNECT_MESSAGE:
-                if msg.get("username") == self.username:
+                if msg.get("player") == self.username:
                     continue
-                for player in self.opponents:
-                    if player["username"] == msg.get("username"):
-                        self.opponents.remove(player)
-                        break
+                self.opponents.pop(msg.get("username"))
 
             if msg.get("category") == GAME_OVER_MESSAGE:
                 self.game_in_progress = False
@@ -494,16 +490,19 @@ class Client:
 
             if msg.get("category") == JOIN_GAME_MESSAGE:
                 self.joined_game = True
-                if "username" in msg:
+                print(msg["subcategory"])
+                if msg["subcategory"] == "other":
                     print(f"{msg.get('username')} joined")
-                    self.opponents.append(
-                        {"username": msg.get("username"), "is_host": False}
+                    self.opponents |= (
+                        {msg.get("username"): {"is_host": False}}
                     )
                 else:
+                    self.username = msg["username"]
                     self.opponents = msg["opponents"]
 
             if msg.get("category") == CREATE_GAME_MESSAGE:
                 self.game_id = msg.get("id_")
+                self.username = msg.get("username")
 
             if msg.get("category") == START_GAME_MESSAGE:
                 self.current_colour = msg.get("current_colour")
