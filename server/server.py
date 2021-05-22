@@ -159,8 +159,8 @@ class Server:
                 update = game.update(
                     player,
                     msg["card_index"],
-                    msg["colour_change_to"],
                     msg["uno_called"],
+                    msg["colour_change_to"],
                 )
 
                 if update["status"] == "invalid_card":

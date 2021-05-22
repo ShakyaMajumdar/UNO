@@ -96,10 +96,17 @@ class Game:
         self.discard_pile.append(card_played)
         player.hand.remove(card_played)
 
-        if not (
+        """if not (
             card_played.colour == self.current_colour
             or (self.current_number and card_played.number == self.current_number)
             or set(card_played.effects).intersection(self.current_effects)
+        ):
+            return {"status": "invalid_card"}"""
+        if not (
+                "colour change" in card_played.effects
+                or self.current_colour == card_played.colour
+                or self.current_number == card_played.number
+                or set(self.current_effects).intersection(card_played.effects)
         ):
             return {"status": "invalid_card"}
 
@@ -123,7 +130,7 @@ class Game:
             self.current_plus_amount = 0
 
         if "skip" in card_played.effects:
-            next(self.turns)
+            self.current_turn = next(self.turns)
 
         if "reversed" in card_played.effects:
             index = self.players.index(player)
@@ -131,9 +138,11 @@ class Game:
                 self.players[index - 1 :: -1] + self.players[: index - 1 : -1]
             )
 
-        if "colour_change" in card_played.effects:
+        if "colour change" in card_played.effects:
             self.current_colour = colour_change_to
-
+            self.current_effects = []
+            response["current_effects"] = []
+            response["current_colour"] = colour_change_to
         if not uno_called and len(player.hand) == 1:
             for _ in range(7):
                 player.give_card(self.draw_card())

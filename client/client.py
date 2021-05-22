@@ -46,6 +46,7 @@ class Client:
     drew_card_from_pile: bool
     called_uno: bool
     caught: bool
+    chosen_card_index: Optional[int]
 
     hand: Optional[list[dict]]
     opponents: dict[str, dict]
@@ -55,6 +56,7 @@ class Client:
     current_effects: Optional[tuple[str]]
 
     showing_menu: bool
+    showing_colour_choices: bool
     joined_game: bool
     valid_id: bool
     disconnected: bool
@@ -75,8 +77,10 @@ class Client:
         self.called_uno = False
         self.caught = False
         self.drew_card_from_pile = False
+        self.chosen_card_index = None
 
         self.showing_menu = True
+        self.showing_colour_choices = False
         self.joined_game = False
         self.valid_invite = False
         self.disconnected = False
@@ -130,26 +134,45 @@ class Client:
             if not self.is_turn:
                 print("not your turn")
                 return
+            if self.showing_colour_choices:
+                return
             card_played = self.hand[card_index]
             if not (
-                    "colour_change" in card_played["effects"]
-                    or self.current_colour == card_played["colour"]
-                    or self.current_number == card_played["number"]
-                    or set(self.current_effects).intersection(card_played["effects"])
+                "colour change" in card_played["effects"]
+                or self.current_colour == card_played["colour"]
+                or self.current_number == card_played["number"]
+                or set(self.current_effects).intersection(card_played["effects"])
             ):
                 return
+            if "colour change" not in card_played["effects"]:
+                send_message(
+                    conn,
+                    category=CARD_PLAYED_MESSAGE,
+                    card_index=card_index,
+                    colour_change_to=None,
+                    uno_called=self.called_uno,
+                )
+                self.hand.pop(card_index)
+                self.is_turn = False
+                self.drew_card_from_pile = False
+            else:
+                self.showing_colour_choices = True
+                self.chosen_card_index = card_index
 
+        def colour_change_listener(colour_):
             send_message(
                 conn,
                 category=CARD_PLAYED_MESSAGE,
-                card_index=card_index,
-                colour_change_to=None,
+                card_index=self.chosen_card_index,
+                colour_change_to=colour_,
                 uno_called=self.called_uno,
             )
-
-            self.hand.pop(card_index)
+            self.showing_colour_choices = False
+            self.hand.pop(self.chosen_card_index)
+            self.chosen_card_index = None
             self.is_turn = False
             self.drew_card_from_pile = False
+            time.sleep(0.1)
 
         def draw_card_button_listener():
             if not self.is_turn:
@@ -162,6 +185,7 @@ class Client:
                 send_message(conn, category=SKIP_TURN_MESSAGE)
                 self.is_turn = False
                 self.drew_card_from_pile = False
+            time.sleep(0.1)
 
         def uno_call_button_listener():
             self.called_uno = True
@@ -351,8 +375,10 @@ class Client:
                             ),
                         )
                         for i, (player_username, player_details) in enumerate(
-                                ({self.username: {"is_host": False}} | self.opponents).items(),
-                                start=1,
+                            (
+                                {self.username: {"is_host": False}} | self.opponents
+                            ).items(),
+                            start=1,
                         ):
                             screen.blit(
                                 self.font.render(
@@ -434,7 +460,9 @@ class Client:
                     font=self.font,
                     radius=10,
                     onClick=draw_card_button_listener,
-                    text="Skip turn!" if self.drew_card_from_pile else "Draw card from deck!"
+                    text="Skip turn!"
+                    if self.drew_card_from_pile
+                    else "Draw card from deck!",
                 )
 
                 draw_card_button.draw()
@@ -450,30 +478,40 @@ class Client:
                     font=self.font,
                     radius=10,
                     onClick=uno_call_button_listener,
-                    text="Say UNO!"
+                    text="Say UNO!",
                 )
 
                 uno_call_button.draw()
                 uno_call_button.listen(events)
+
+                if self.showing_colour_choices:
+                    for i_, colour in enumerate(("red", "yellow", "green", "blue")):
+                        colour_button = pygame_widgets.Button(
+                            screen,
+                            500 + i_ * 60,
+                            300,
+                            100,
+                            100,
+                            text=colour,
+                            onClick=colour_change_listener,
+                            onClickParams=(colour,),
+                        )
+                        colour_button.draw()
+                        colour_button.listen(events)
 
                 pygame.display.update()
                 continue
 
                 a = input("can play? (y/n) ")
                 if a == "y":
-                    i = int(input("enter index "))
                     c = None
                     if "colour_change" in self.hand[i]["effects"]:
                         c = input("change to? ")
 
-                    uno = input("call uno ")
-
                     send_message(
                         conn,
                         category=CARD_PLAYED_MESSAGE,
-                        card_index=i,
                         colour_change_to=c,
-                        uno_called=uno == "y",
                     )
 
     def server_listener(self):
@@ -490,12 +528,9 @@ class Client:
 
             if msg.get("category") == JOIN_GAME_MESSAGE:
                 self.joined_game = True
-                print(msg["subcategory"])
                 if msg["subcategory"] == "other":
                     print(f"{msg.get('username')} joined")
-                    self.opponents |= (
-                        {msg.get("username"): {"is_host": False}}
-                    )
+                    self.opponents |= {msg.get("username"): {"is_host": False}}
                 else:
                     self.username = msg["username"]
                     self.opponents = msg["opponents"]
