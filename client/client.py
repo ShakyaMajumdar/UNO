@@ -170,6 +170,7 @@ class Client:
                 colour_change_to=colour_,
                 uno_called=self.called_uno,
             )
+            print(colour_, self.chosen_card_index)
             self.showing_colour_choices = False
             self.hand.pop(self.chosen_card_index)
             self.chosen_card_index = None
@@ -271,6 +272,8 @@ class Client:
             text="Start Now!",
         )
 
+        clock = pygame.time.Clock()
+
         while True:
             events = pygame.event.get()
             for event in events:
@@ -300,10 +303,7 @@ class Client:
                 create_button.listen(events)
                 create_button.draw()
 
-                pygame.display.update()
-                continue
-
-            if not self.game_in_progress:
+            elif not self.game_in_progress:
                 if self.is_host:
                     if not self.game_id:
                         continue
@@ -340,9 +340,6 @@ class Client:
 
                     game_start_button.listen(events)
                     game_start_button.draw()
-
-                    pygame.display.update()
-                    continue
 
                 else:
                     screen.blit(self.menu_background, (0, 0))
@@ -392,10 +389,7 @@ class Client:
                                 (100, 210 + self.font.get_linesize() * i),
                             )
 
-                    pygame.display.update()
-                    continue
-
-            if self.game_in_progress:
+            else:
                 pygame.display.set_mode(self.game_window_size)
 
                 screen.blit(self.game_background, (0, 0))
@@ -420,7 +414,7 @@ class Client:
                     ),
                 )
 
-                pad = max((50, 50 + card_width * (7 - len(self.hand))))
+                pad = max((50, 50 + (card_width - 50) * (7 - len(self.hand))))
                 card_sprite_allowed_width = (
                     (self.game_window_size[0] - pad - card_width) / (len(self.hand) - 1)
                     if len(self.hand) > 1
@@ -504,20 +498,8 @@ class Client:
                         colour_button.draw()
                         colour_button.listen(events)
 
-                pygame.display.update()
-                continue
-
-                a = input("can play? (y/n) ")
-                if a == "y":
-                    c = None
-                    if "colour_change" in self.hand[i]["effects"]:
-                        c = input("change to? ")
-
-                    send_message(
-                        conn,
-                        category=CARD_PLAYED_MESSAGE,
-                        colour_change_to=c,
-                    )
+            pygame.display.update()
+            clock.tick(30)
 
     def server_listener(self):
         while not self.disconnected:
