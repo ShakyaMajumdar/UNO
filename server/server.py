@@ -113,8 +113,8 @@ class Server:
                 game = Game(id_)
 
                 username = (
-                        msg.get("username")
-                        + f"#{generate_discriminator(msg.get('username'), self.player_usernames)}"
+                    msg.get("username")
+                    + f"#{generate_discriminator(msg.get('username'), self.player_usernames)}"
                 )
                 self.player_usernames.add(username)
                 player = Player(username, conn, True, game.id_)
@@ -122,7 +122,9 @@ class Server:
 
                 self.on_going_games_by_id[id_] = game
                 self.players_by_conn[conn] = player
-                send_message(conn, category=CREATE_GAME_MESSAGE, id_=id_, username=username)
+                send_message(
+                    conn, category=CREATE_GAME_MESSAGE, id_=id_, username=username
+                )
                 print(f"[CREATE] {addr} created game {game.id_}", flush=True)
 
             if msg.get("category") == START_GAME_MESSAGE:

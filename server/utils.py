@@ -17,7 +17,7 @@ def generate_random_id(preexisting_ids: set[str]) -> str:
 def generate_discriminator(username, preexisting_usernames: set[str]) -> str:
     discriminator = None
     while not discriminator or username + f"#{discriminator}" in preexisting_usernames:
-        discriminator = ''.join(random.choices(string.digits, k=4))
+        discriminator = "".join(random.choices(string.digits, k=4))
     return discriminator
 
 

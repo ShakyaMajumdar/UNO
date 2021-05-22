@@ -103,10 +103,10 @@ class Game:
         ):
             return {"status": "invalid_card"}"""
         if not (
-                "colour change" in card_played.effects
-                or self.current_colour == card_played.colour
-                or self.current_number == card_played.number
-                or set(self.current_effects).intersection(card_played.effects)
+            "colour change" in card_played.effects
+            or self.current_colour == card_played.colour
+            or self.current_number == card_played.number
+            or set(self.current_effects).intersection(card_played.effects)
         ):
             return {"status": "invalid_card"}
 
@@ -139,6 +139,11 @@ class Game:
             )
 
         if "colour change" in card_played.effects:
+            response |= {
+                "last_colour": self.current_colour,
+                "last_number": self.current_number,
+                "last_effects": self.current_effects,
+            }
             self.current_colour = colour_change_to
             self.current_effects = []
             response["current_effects"] = []

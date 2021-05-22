@@ -51,6 +51,7 @@ class Client:
     hand: Optional[list[dict]]
     opponents: dict[str, dict]
 
+    last_card: Optional[dict]
     current_colour: Optional[str]
     current_number: Optional[int]
     current_effects: Optional[tuple[str]]
@@ -78,6 +79,8 @@ class Client:
         self.caught = False
         self.drew_card_from_pile = False
         self.chosen_card_index = None
+
+        self.last_card = None
 
         self.showing_menu = True
         self.showing_colour_choices = False
@@ -404,11 +407,13 @@ class Client:
                 card_width = 218
                 card_height = 328
 
-                current_card = self.card_sprites[
-                    self.current_colour, self.current_number, self.current_effects
+                last_card = self.card_sprites[
+                    self.last_card["colour"],
+                    self.last_card["number"],
+                    self.last_card["effects"],
                 ]
                 screen.blit(
-                    current_card,
+                    last_card,
                     (
                         (self.game_window_size[0] - card_width) // 2,
                         (self.game_window_size[1] - card_height) // 2,
@@ -543,6 +548,11 @@ class Client:
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
                 self.current_effects = tuple(msg.get("current_effects"))
+                self.last_card = {
+                    "colour": self.current_colour,
+                    "number": self.current_number,
+                    "effects": self.current_effects,
+                }
                 self.game_in_progress = True
                 self.is_turn = msg.get("is_turn")
                 self.hand = [
@@ -553,6 +563,11 @@ class Client:
                 self.current_colour = msg.get("current_colour")
                 self.current_number = msg.get("current_number")
                 self.current_effects = tuple(msg.get("current_effects"))
+                self.last_card = {
+                    "colour": msg.get("last_colour", self.current_colour),
+                    "number": msg.get("last_number", self.current_number),
+                    "effects": tuple(msg.get("last_effects", self.current_effects)),
+                }
                 self.hand = [
                     i | {"effects": tuple(i["effects"])} for i in msg.get("hand")
                 ]
